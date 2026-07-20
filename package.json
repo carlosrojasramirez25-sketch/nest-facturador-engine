@@ -29,7 +29,7 @@
     "pdfmake": "^0.2.10",
     "qrcode": "^1.5.4",
     "xml-crypto": "^6.0.0",
-    "xmlbuilder2": "^3.1.1"
+    "xmlbuilder2": "^4.0.3"
   },
   "devDependencies": {
     "@nestjs/common": "^11.0.0",
