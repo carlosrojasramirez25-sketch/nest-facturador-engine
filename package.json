@@ -1,6 +1,6 @@
 {
   "name": "sunat-engine-nest",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Motor de Facturación Electrónica SUNAT UBL 2.1 para NestJS",
   "author": "carlosrojasramirez25-sketch",
   "license": "MIT",
