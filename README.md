@@ -238,6 +238,59 @@ interface EngineResponse {
 | `beta` | e-beta.sunat.gob.pe | gre-test.nubefact.com |
 | `produccion` | e-factura.sunat.gob.pe | api-cpe.sunat.gob.pe |
 
+## Proveedor: SUNAT directo vs OSE
+
+Puedes elegir enviar tus comprobantes **directamente a SUNAT** o a través de un **OSE (Operador de Servicios Electrónicos)** autorizado como Nubefact, EFACT, DigiFlow, Bizlinks, entre otros.
+
+```typescript
+// Envío directo a SUNAT (por defecto)
+SunatEngineModule.forRoot({
+  provider: 'sunat',
+  sunat: { ruc: '...', solUser: '...', solPass: '...', certPem: '...' },
+})
+
+// Envío a través de un OSE
+SunatEngineModule.forRoot({
+  provider: 'ose',
+  sunat: { ruc: '...', certPem: '...' }, // solo se usa para firmar el XML
+  ose: {
+    url:   'https://api.tuose.com/v1/documents',
+    token: 'TU_TOKEN_OSE',               // Bearer token
+    // o en lugar de token:
+    // username: 'usuario',
+    // password: 'clave',
+  },
+})
+```
+
+Con variables de entorno:
+
+```typescript
+SunatEngineModule.forRootAsync({
+  useFactory: (config: ConfigService) => ({
+    provider: config.get('PROVIDER'), // 'sunat' | 'ose'
+    sunat: {
+      ruc:     config.get('SUNAT_RUC'),
+      solUser: config.get('SUNAT_SOL_USER'),
+      solPass: config.get('SUNAT_SOL_PASS'),
+      certPem: config.get('SUNAT_CERT_PEM'),
+    },
+    ose: {
+      url:   config.get('OSE_URL'),
+      token: config.get('OSE_TOKEN'),
+    },
+  }),
+})
+```
+
+```env
+PROVIDER=ose
+OSE_URL=https://api.tuose.com/v1/documents
+OSE_TOKEN=tu_token_aqui
+```
+
+> El `OseClient` es genérico y compatible con cualquier OSE que acepte `{ fileName, contentFile }` (ZIP en base64) vía POST con autenticación Bearer o Basic.
+
 ## Soporte y actualizaciones
 
 SUNAT actualiza continuamente sus esquemas, validaciones y normativas de facturación electrónica. Este paquete recibe mantenimiento activo para mantenerse alineado con cada cambio oficial, garantizando que tu integración siga funcionando sin interrupciones.

@@ -16,6 +16,7 @@ import { buildVoidedXml } from './xml/voided.builder';
 import { XmlSignerService } from './signer/xml-signer.service';
 import { SunatSoapClient } from './soap/sunat-soap.client';
 import { SunatGreClient } from './gre/sunat-gre.client';
+import { OseClient } from './ose/ose.client';
 import { CdrParserService } from './cdr/cdr-parser.service';
 import { SUNAT_ENGINE_OPTIONS, SunatEngineOptions } from './sunat-engine.module';
 
@@ -27,9 +28,14 @@ export class SunatEngineService {
     private readonly signer: XmlSignerService,
     private readonly soap: SunatSoapClient,
     private readonly gre: SunatGreClient,
+    private readonly oseClient: OseClient,
     private readonly cdrParser: CdrParserService,
     @Inject(SUNAT_ENGINE_OPTIONS) private readonly options: SunatEngineOptions,
   ) {}
+
+  private useOse(): boolean {
+    return (this.options.provider ?? 'sunat') === 'ose';
+  }
 
   private resolveCredentials(perCall?: Partial<CompanyCredentials>): CompanyCredentials {
     const global = this.options.sunat ?? {};
@@ -51,29 +57,17 @@ export class SunatEngineService {
     const xmlUnsigned = buildInvoiceXml(payload);
     const { signedXml, hash } = this.signDocument(xmlUnsigned, creds);
 
-    const fileName = this.soap.buildZipFileName(
-      creds.ruc,
-      payload.tipoDoc,
-      payload.serie,
-      payload.correlativo,
-    );
+    const fileName = this.soap.buildZipFileName(creds.ruc, payload.tipoDoc, payload.serie, payload.correlativo);
 
-    const result = await this.soap.sendBill({
-      ruc: creds.ruc,
-      solUser: creds.solUser,
-      solPass: creds.solPass,
-      fileName,
-      xmlSigned: signedXml,
-      mode: creds.endpointMode ?? 'beta',
-    });
+    const result = this.useOse()
+      ? await this.oseClient.sendBill({ fileName, xmlSigned: signedXml, ose: this.options.ose! })
+      : await this.soap.sendBill({ ruc: creds.ruc, solUser: creds.solUser, solPass: creds.solPass, fileName, xmlSigned: signedXml, mode: creds.endpointMode ?? 'beta' });
 
     if (!result.success) {
       return { xml: Buffer.from(signedXml).toString('base64'), hash, sunatResponse: { success: false, error: result.error } };
     }
 
-    const cdrResponse = result.cdrZipBase64
-      ? await this.cdrParser.parse(result.cdrZipBase64)
-      : undefined;
+    const cdrResponse = result.cdrZipBase64 ? await this.cdrParser.parse(result.cdrZipBase64) : undefined;
 
     return {
       xml: Buffer.from(signedXml).toString('base64'),
@@ -95,35 +89,18 @@ export class SunatEngineService {
     const xmlUnsigned = buildNoteXml(payload);
     const { signedXml, hash } = this.signDocument(xmlUnsigned, creds);
 
-    const fileName = this.soap.buildZipFileName(
-      creds.ruc,
-      payload.tipoDoc,
-      payload.serie,
-      payload.correlativo,
-    );
+    const fileName = this.soap.buildZipFileName(creds.ruc, payload.tipoDoc, payload.serie, payload.correlativo);
 
-    const result = await this.soap.sendBill({
-      ruc: creds.ruc,
-      solUser: creds.solUser,
-      solPass: creds.solPass,
-      fileName,
-      xmlSigned: signedXml,
-      mode: creds.endpointMode ?? 'beta',
-    });
+    const result = this.useOse()
+      ? await this.oseClient.sendBill({ fileName, xmlSigned: signedXml, ose: this.options.ose! })
+      : await this.soap.sendBill({ ruc: creds.ruc, solUser: creds.solUser, solPass: creds.solPass, fileName, xmlSigned: signedXml, mode: creds.endpointMode ?? 'beta' });
 
-    const cdrResponse = result.cdrZipBase64
-      ? await this.cdrParser.parse(result.cdrZipBase64)
-      : undefined;
+    const cdrResponse = result.cdrZipBase64 ? await this.cdrParser.parse(result.cdrZipBase64) : undefined;
 
     return {
       xml: Buffer.from(signedXml).toString('base64'),
       hash,
-      sunatResponse: {
-        success: result.success,
-        cdrZip: result.cdrZipBase64,
-        cdrResponse,
-        error: result.error,
-      },
+      sunatResponse: { success: result.success, cdrZip: result.cdrZipBase64, cdrResponse, error: result.error },
     };
   }
 
@@ -172,23 +149,14 @@ export class SunatEngineService {
     const fecha = payload.fecResumen.slice(0, 10);
     const fileName = this.soap.buildSummaryFileName(creds.ruc, 'RC', fecha, payload.correlativo);
 
-    const result = await this.soap.sendSummary({
-      ruc: creds.ruc,
-      solUser: creds.solUser,
-      solPass: creds.solPass,
-      fileName,
-      xmlSigned: signedXml,
-      mode: creds.endpointMode ?? 'beta',
-    });
+    const result = this.useOse()
+      ? await this.oseClient.sendSummary({ fileName, xmlSigned: signedXml, ose: this.options.ose! })
+      : await this.soap.sendSummary({ ruc: creds.ruc, solUser: creds.solUser, solPass: creds.solPass, fileName, xmlSigned: signedXml, mode: creds.endpointMode ?? 'beta' });
 
     return {
       xml: Buffer.from(signedXml).toString('base64'),
       hash,
-      sunatResponse: {
-        success: result.success,
-        ticket: result.ticket,
-        error: result.error,
-      },
+      sunatResponse: { success: result.success, ticket: result.ticket, error: result.error },
     };
   }
 
@@ -204,14 +172,9 @@ export class SunatEngineService {
     const fecha = payload.fecGeneracion.slice(0, 10);
     const fileName = this.soap.buildSummaryFileName(creds.ruc, 'RA', fecha, payload.correlativo);
 
-    const result = await this.soap.sendSummary({
-      ruc: creds.ruc,
-      solUser: creds.solUser,
-      solPass: creds.solPass,
-      fileName,
-      xmlSigned: signedXml,
-      mode: creds.endpointMode ?? 'beta',
-    });
+    const result = this.useOse()
+      ? await this.oseClient.sendSummary({ fileName, xmlSigned: signedXml, ose: this.options.ose! })
+      : await this.soap.sendSummary({ ruc: creds.ruc, solUser: creds.solUser, solPass: creds.solPass, fileName, xmlSigned: signedXml, mode: creds.endpointMode ?? 'beta' });
 
     return {
       xml: Buffer.from(signedXml).toString('base64'),

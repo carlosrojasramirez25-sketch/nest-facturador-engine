@@ -5,6 +5,7 @@ import { SunatSoapClient } from './soap/sunat-soap.client';
 import { SunatGreClient } from './gre/sunat-gre.client';
 import { CdrParserService } from './cdr/cdr-parser.service';
 import { DocumentPdfService } from './pdf/document-pdf.service';
+import { OseClient } from './ose/ose.client';
 
 // ---------- Opciones del modulo ----------
 
@@ -28,8 +29,17 @@ export interface SunatEngineCredentialsOptions {
   endpointMode?: 'beta' | 'produccion';
 }
 
+export interface SunatEngineOseOptions {
+  url: string;
+  token?: string;
+  username?: string;
+  password?: string;
+}
+
 export interface SunatEngineOptions {
+  provider?: 'sunat' | 'ose';
   sunat?: SunatEngineCredentialsOptions;
+  ose?: SunatEngineOseOptions;
   gre?: SunatEngineGreOptions;
 }
 
@@ -47,6 +57,7 @@ const ENGINE_PROVIDERS = [
   XmlSignerService,
   SunatSoapClient,
   SunatGreClient,
+  OseClient,
   CdrParserService,
   DocumentPdfService,
 ];
@@ -56,6 +67,7 @@ const ENGINE_EXPORTS = [
   XmlSignerService,
   SunatSoapClient,
   SunatGreClient,
+  OseClient,
   CdrParserService,
   DocumentPdfService,
 ];

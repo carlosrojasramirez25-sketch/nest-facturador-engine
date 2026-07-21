@@ -1,6 +1,6 @@
 // Modulo principal
 export { SunatEngineModule, SUNAT_ENGINE_OPTIONS } from './sunat-engine.module';
-export type { SunatEngineOptions, SunatEngineAsyncOptions, SunatEngineGreOptions } from './sunat-engine.module';
+export type { SunatEngineOptions, SunatEngineAsyncOptions, SunatEngineGreOptions, SunatEngineCredentialsOptions, SunatEngineOseOptions } from './sunat-engine.module';
 
 // Servicio orquestador
 export { SunatEngineService } from './sunat-engine.service';
@@ -10,6 +10,8 @@ export { XmlSignerService } from './signer/xml-signer.service';
 export { SunatSoapClient } from './soap/sunat-soap.client';
 export type { SoapSendResult, SunatEndpointType } from './soap/sunat-soap.client';
 export { SunatGreClient } from './gre/sunat-gre.client';
+export { OseClient } from './ose/ose.client';
+export type { OseClientOptions } from './ose/ose.client';
 export { CdrParserService } from './cdr/cdr-parser.service';
 export { DocumentPdfService } from './pdf/document-pdf.service';
 export type { PdfFormat } from './pdf/document-pdf.service';
