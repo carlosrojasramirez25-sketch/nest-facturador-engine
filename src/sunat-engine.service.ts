@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
+import * as fs from 'fs';
 import {
   CompanyCredentials,
   EngineResponse,
@@ -251,12 +252,19 @@ export class SunatEngineService {
   // Helpers internos
   // -----------------------------------------------------------------
 
+  private resolveFileContent(value: string): string {
+    if (/^\.{0,2}\//.test(value) || /^[A-Za-z]:\\/.test(value)) {
+      return fs.readFileSync(value, 'utf8');
+    }
+    return value;
+  }
+
   private signDocument(
     xmlUnsigned: string,
     credentials: CompanyCredentials,
   ): { signedXml: string; hash: string } {
-    let privateKeyPem = credentials.certKey ?? '';
-    let certPem = credentials.certPem;
+    let certPem = this.resolveFileContent(credentials.certPem);
+    let privateKeyPem = credentials.certKey ? this.resolveFileContent(credentials.certKey) : '';
 
     if (!certPem.includes('-----BEGIN')) {
       const extracted = this.signer.loadP12(certPem);

@@ -4,7 +4,7 @@
     "type": "individual",
     "url": "https://wa.me/51907596305"
   },
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Motor de Facturación Electrónica SUNAT UBL 2.1 para NestJS",
   "author": "carlosrojasramirez25-sketch",
   "license": "MIT",

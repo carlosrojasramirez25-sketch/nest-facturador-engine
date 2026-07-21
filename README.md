@@ -196,18 +196,23 @@ export class InvoicesService {
 
 ## Certificado digital
 
-El motor acepta el certificado en dos formatos:
+El motor acepta el certificado en tres formatos:
 
 ```typescript
-// Formato 1: archivo .p12 en base64
+// Formato 1: ruta al archivo .p12 o .pem en disco
 const credentials: CompanyCredentials = {
-  certPem: 'MIIKJAIBAzCCCd4GCSqGSI...', // .p12 en base64 (sin headers PEM)
+  certPem: '/ruta/al/certificado.p12',
 };
 
-// Formato 2: certificado PEM + clave privada PEM por separado
+// Formato 2: ruta a cert PEM + ruta a clave privada PEM por separado
 const credentials: CompanyCredentials = {
-  certPem: '-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----',
-  certKey: '-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----',
+  certPem: '/ruta/al/cert.pem',
+  certKey: '/ruta/al/key.pem',
+};
+
+// Formato 3: contenido directo en base64 (.p12) o texto PEM
+const credentials: CompanyCredentials = {
+  certPem: 'MIIKJAIBAzCCCd4GCSqGSI...', // .p12 en base64
 };
 ```
 
