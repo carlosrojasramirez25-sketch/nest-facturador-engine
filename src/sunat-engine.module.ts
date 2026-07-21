@@ -19,7 +19,17 @@ export interface SunatEngineGreOptions {
   scope?: string;
 }
 
+export interface SunatEngineCredentialsOptions {
+  ruc?: string;
+  solUser?: string;
+  solPass?: string;
+  certPem?: string;
+  certKey?: string;
+  endpointMode?: 'beta' | 'produccion';
+}
+
 export interface SunatEngineOptions {
+  sunat?: SunatEngineCredentialsOptions;
   gre?: SunatEngineGreOptions;
 }
 

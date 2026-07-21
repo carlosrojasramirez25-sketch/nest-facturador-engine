@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import {
   CompanyCredentials,
   EngineResponse,
@@ -17,12 +17,8 @@ import { XmlSignerService } from './signer/xml-signer.service';
 import { SunatSoapClient } from './soap/sunat-soap.client';
 import { SunatGreClient } from './gre/sunat-gre.client';
 import { CdrParserService } from './cdr/cdr-parser.service';
+import { SUNAT_ENGINE_OPTIONS, SunatEngineOptions } from './sunat-engine.module';
 
-/**
- * Motor principal de Facturacion Electronica SUNAT.
- *
- * Orquesta: BuildXML -> Sign -> ZipEnviar -> ParseCDR
- */
 @Injectable()
 export class SunatEngineService {
   private readonly logger = new Logger(SunatEngineService.name);
@@ -32,30 +28,43 @@ export class SunatEngineService {
     private readonly soap: SunatSoapClient,
     private readonly gre: SunatGreClient,
     private readonly cdrParser: CdrParserService,
+    @Inject(SUNAT_ENGINE_OPTIONS) private readonly options: SunatEngineOptions,
   ) {}
+
+  private resolveCredentials(perCall?: Partial<CompanyCredentials>): CompanyCredentials {
+    const global = this.options.sunat ?? {};
+    const merged = { ...global, ...perCall };
+    if (!merged.ruc || !merged.solUser || !merged.solPass || !merged.certPem) {
+      throw new Error(
+        'Credenciales incompletas: proporciona ruc, solUser, solPass y certPem en sunat:{} del módulo o en cada llamada',
+      );
+    }
+    return merged as CompanyCredentials;
+  }
 
   // -----------------------------------------------------------------
   // FACTURA (01) / BOLETA (03)
   // -----------------------------------------------------------------
 
-  async sendInvoice(payload: InvoicePayload, credentials: CompanyCredentials): Promise<EngineResponse> {
+  async sendInvoice(payload: InvoicePayload, credentials?: Partial<CompanyCredentials>): Promise<EngineResponse> {
+    const creds = this.resolveCredentials(credentials);
     const xmlUnsigned = buildInvoiceXml(payload);
-    const { signedXml, hash } = this.signDocument(xmlUnsigned, credentials);
+    const { signedXml, hash } = this.signDocument(xmlUnsigned, creds);
 
     const fileName = this.soap.buildZipFileName(
-      credentials.ruc,
+      creds.ruc,
       payload.tipoDoc,
       payload.serie,
       payload.correlativo,
     );
 
     const result = await this.soap.sendBill({
-      ruc: credentials.ruc,
-      solUser: credentials.solUser,
-      solPass: credentials.solPass,
+      ruc: creds.ruc,
+      solUser: creds.solUser,
+      solPass: creds.solPass,
       fileName,
       xmlSigned: signedXml,
-      mode: credentials.endpointMode ?? 'beta',
+      mode: creds.endpointMode ?? 'beta',
     });
 
     if (!result.success) {
@@ -81,24 +90,25 @@ export class SunatEngineService {
   // NOTA DE CREDITO (07) / DEBITO (08)
   // -----------------------------------------------------------------
 
-  async sendNote(payload: NotePayload, credentials: CompanyCredentials): Promise<EngineResponse> {
+  async sendNote(payload: NotePayload, credentials?: Partial<CompanyCredentials>): Promise<EngineResponse> {
+    const creds = this.resolveCredentials(credentials);
     const xmlUnsigned = buildNoteXml(payload);
-    const { signedXml, hash } = this.signDocument(xmlUnsigned, credentials);
+    const { signedXml, hash } = this.signDocument(xmlUnsigned, creds);
 
     const fileName = this.soap.buildZipFileName(
-      credentials.ruc,
+      creds.ruc,
       payload.tipoDoc,
       payload.serie,
       payload.correlativo,
     );
 
     const result = await this.soap.sendBill({
-      ruc: credentials.ruc,
-      solUser: credentials.solUser,
-      solPass: credentials.solPass,
+      ruc: creds.ruc,
+      solUser: creds.solUser,
+      solPass: creds.solPass,
       fileName,
       xmlSigned: signedXml,
-      mode: credentials.endpointMode ?? 'beta',
+      mode: creds.endpointMode ?? 'beta',
     });
 
     const cdrResponse = result.cdrZipBase64
@@ -121,21 +131,22 @@ export class SunatEngineService {
   // GUIA DE REMISION (GRE) - REST API con OAuth (no SOAP)
   // -----------------------------------------------------------------
 
-  async sendDespatch(payload: DespatchPayload, credentials: CompanyCredentials): Promise<EngineResponse> {
+  async sendDespatch(payload: DespatchPayload, credentials?: Partial<CompanyCredentials>): Promise<EngineResponse> {
+    const creds = this.resolveCredentials(credentials);
     const xmlUnsigned = buildDespatchXml(payload);
-    const { signedXml, hash } = this.signDocument(xmlUnsigned, credentials);
+    const { signedXml, hash } = this.signDocument(xmlUnsigned, creds);
 
     const result = await this.gre.sendGRE({
-      ruc:          credentials.ruc,
-      solUser:      credentials.solUser,
-      solPass:      credentials.solPass,
+      ruc:          creds.ruc,
+      solUser:      creds.solUser,
+      solPass:      creds.solPass,
       serie:        payload.serie,
       correlativo:  payload.correlativo,
       signedXml,
-      clientId:     credentials.greClientId,
-      clientSecret: credentials.greClientSecret,
-      authUrl:      credentials.greAuthUrl,
-      apiUrl:       credentials.greApiUrl,
+      clientId:     creds.greClientId,
+      clientSecret: creds.greClientSecret,
+      authUrl:      creds.greAuthUrl,
+      apiUrl:       creds.greApiUrl,
     });
 
     return {
@@ -153,20 +164,21 @@ export class SunatEngineService {
   // RESUMEN DIARIO (RC) - asincrono
   // -----------------------------------------------------------------
 
-  async sendSummary(payload: SummaryPayload, credentials: CompanyCredentials): Promise<EngineResponse> {
+  async sendSummary(payload: SummaryPayload, credentials?: Partial<CompanyCredentials>): Promise<EngineResponse> {
+    const creds = this.resolveCredentials(credentials);
     const xmlUnsigned = buildSummaryXml(payload);
-    const { signedXml, hash } = this.signDocument(xmlUnsigned, credentials);
+    const { signedXml, hash } = this.signDocument(xmlUnsigned, creds);
 
     const fecha = payload.fecResumen.slice(0, 10);
-    const fileName = this.soap.buildSummaryFileName(credentials.ruc, 'RC', fecha, payload.correlativo);
+    const fileName = this.soap.buildSummaryFileName(creds.ruc, 'RC', fecha, payload.correlativo);
 
     const result = await this.soap.sendSummary({
-      ruc: credentials.ruc,
-      solUser: credentials.solUser,
-      solPass: credentials.solPass,
+      ruc: creds.ruc,
+      solUser: creds.solUser,
+      solPass: creds.solPass,
       fileName,
       xmlSigned: signedXml,
-      mode: credentials.endpointMode ?? 'beta',
+      mode: creds.endpointMode ?? 'beta',
     });
 
     return {
@@ -184,20 +196,21 @@ export class SunatEngineService {
   // COMUNICACION DE BAJA (RA) - asincrono
   // -----------------------------------------------------------------
 
-  async sendVoided(payload: VoidedPayload, credentials: CompanyCredentials): Promise<EngineResponse> {
+  async sendVoided(payload: VoidedPayload, credentials?: Partial<CompanyCredentials>): Promise<EngineResponse> {
+    const creds = this.resolveCredentials(credentials);
     const xmlUnsigned = buildVoidedXml(payload);
-    const { signedXml, hash } = this.signDocument(xmlUnsigned, credentials);
+    const { signedXml, hash } = this.signDocument(xmlUnsigned, creds);
 
     const fecha = payload.fecGeneracion.slice(0, 10);
-    const fileName = this.soap.buildSummaryFileName(credentials.ruc, 'RA', fecha, payload.correlativo);
+    const fileName = this.soap.buildSummaryFileName(creds.ruc, 'RA', fecha, payload.correlativo);
 
     const result = await this.soap.sendSummary({
-      ruc: credentials.ruc,
-      solUser: credentials.solUser,
-      solPass: credentials.solPass,
+      ruc: creds.ruc,
+      solUser: creds.solUser,
+      solPass: creds.solPass,
       fileName,
       xmlSigned: signedXml,
-      mode: credentials.endpointMode ?? 'beta',
+      mode: creds.endpointMode ?? 'beta',
     });
 
     return {
@@ -217,19 +230,21 @@ export class SunatEngineService {
 
   async getTicketStatus(
     ticket: string,
-    credentials: CompanyCredentials,
+    credentials?: Partial<CompanyCredentials>,
     endpointType: 'factura' | 'guia' = 'factura',
   ): Promise<EngineResponse> {
+    const creds = this.resolveCredentials(credentials);
+
     if (endpointType === 'guia') {
       const result = await this.gre.getStatus({
-        ruc: credentials.ruc,
-        solUser: credentials.solUser,
-        solPass: credentials.solPass,
+        ruc: creds.ruc,
+        solUser: creds.solUser,
+        solPass: creds.solPass,
         ticket,
-        clientId:     credentials.greClientId,
-        clientSecret: credentials.greClientSecret,
-        authUrl:      credentials.greAuthUrl,
-        apiUrl:       credentials.greApiUrl,
+        clientId:     creds.greClientId,
+        clientSecret: creds.greClientSecret,
+        authUrl:      creds.greAuthUrl,
+        apiUrl:       creds.greApiUrl,
       });
 
       const cdrResponse = result.cdrZipBase64
@@ -247,11 +262,11 @@ export class SunatEngineService {
     }
 
     const result = await this.soap.getStatus({
-      ruc: credentials.ruc,
-      solUser: credentials.solUser,
-      solPass: credentials.solPass,
+      ruc: creds.ruc,
+      solUser: creds.solUser,
+      solPass: creds.solPass,
       ticket,
-      mode: credentials.endpointMode ?? 'beta',
+      mode: creds.endpointMode ?? 'beta',
       endpointType,
     });
 

@@ -14,7 +14,7 @@ pnpm add sunat-engine-nest
 
 ## Configuración
 
-Registra el módulo en tu `AppModule`:
+Registra el módulo en tu `AppModule`. Puedes definir las credenciales de tu empresa **una sola vez** en el módulo usando el campo `sunat`, evitando repetirlas en cada llamada.
 
 ```typescript
 import { SunatEngineModule } from 'sunat-engine-nest';
@@ -23,6 +23,13 @@ import { SunatEngineModule } from 'sunat-engine-nest';
 @Module({
   imports: [
     SunatEngineModule.forRoot({
+      sunat: {
+        ruc:          '20123456789',
+        solUser:      'MODDATOS',
+        solPass:      'moddatos',
+        certPem:      'BASE64_DEL_P12_O_PEM',
+        endpointMode: 'beta', // 'beta' | 'produccion'
+      },
       gre: {
         authUrl:      'https://gre-test.nubefact.com/v1',
         apiUrl:       'https://gre-test.nubefact.com/v1',
@@ -47,6 +54,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
+        sunat: {
+          ruc:          config.get('SUNAT_RUC'),
+          solUser:      config.get('SUNAT_SOL_USER'),
+          solPass:      config.get('SUNAT_SOL_PASS'),
+          certPem:      config.get('SUNAT_CERT_PEM'),
+          endpointMode: config.get('SUNAT_MODE') ?? 'beta',
+        },
         gre: {
           authUrl:      config.get('GRE_AUTH_URL'),
           apiUrl:       config.get('GRE_API_URL'),
@@ -60,37 +74,35 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 export class AppModule {}
 ```
 
-## Variables de entorno (GRE)
+## Variables de entorno (sunat + GRE)
 
 ```env
+SUNAT_RUC=20123456789
+SUNAT_SOL_USER=MODDATOS
+SUNAT_SOL_PASS=moddatos
+SUNAT_CERT_PEM=BASE64_DEL_P12
+SUNAT_MODE=beta
+
 GRE_AUTH_URL=https://gre-test.nubefact.com/v1
 GRE_API_URL=https://gre-test.nubefact.com/v1
 GRE_CLIENT_ID=tu_client_id
 GRE_CLIENT_SECRET=tu_client_secret
-GRE_SCOPE=https://api-cpe.sunat.gob.pe
 ```
 
 ## Uso
 
-Inyecta `SunatEngineService` en cualquier servicio o controlador:
+Inyecta `SunatEngineService` en cualquier servicio o controlador. Si configuraste `sunat:{}` en el módulo, **no necesitas pasar credenciales en cada llamada**:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { SunatEngineService, InvoicePayload, CompanyCredentials } from 'sunat-engine-nest';
+import { SunatEngineService, InvoicePayload } from 'sunat-engine-nest';
 
 @Injectable()
 export class InvoicesService {
   constructor(private readonly engine: SunatEngineService) {}
 
   async sendInvoice() {
-    const credentials: CompanyCredentials = {
-      ruc:          '20123456789',
-      solUser:      'MODDATOS',
-      solPass:      'moddatos',
-      certPem:      'BASE64_DEL_P12_O_PEM',
-      endpointMode: 'beta', // 'beta' | 'produccion'
-    };
-
+    // Sin credenciales — usa las del módulo automáticamente
     const payload: InvoicePayload = {
       tipoOperacion: '0101',
       tipoDoc:       '01', // 01=Factura, 03=Boleta
@@ -132,9 +144,23 @@ export class InvoicesService {
       mtoImpVenta:     236,
     };
 
-    return this.engine.sendInvoice(payload, credentials);
+    return this.engine.sendInvoice(payload); // credenciales del módulo
   }
 }
+```
+
+También puedes sobreescribir las credenciales por llamada cuando manejas múltiples empresas:
+
+```typescript
+// Credenciales específicas para esta llamada (tienen prioridad sobre el módulo)
+return this.engine.sendInvoice(payload, {
+  ruc:     '20987654321',
+  solUser: 'OTRO_USUARIO',
+  solPass: 'otra_clave',
+  certPem: 'OTRO_CERT_BASE64',
+});
+```
+
 ```
 
 ## Documentos soportados
