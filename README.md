@@ -222,16 +222,7 @@ Si este proyecto te ha sido útil y quieres apoyar su desarrollo continuo, puede
 
 **Número:** `+51 907 596 305`
 
-- [Escríbeme por WhatsApp](https://wa.me/51907596305) para consultas, soporte o coordinar una transferencia.
-
-### Transferencia bancaria (BCP — Soles)
-
-| Campo | Detalle |
-|-------|---------|
-| Banco | BCP |
-| Moneda | Soles (PEN) |
-| N° de cuenta | `19399752856058` |
-| CCI | `00219319975285605810` |
+- [Escríbeme por WhatsApp](https://wa.me/51907596305) para consultas, soporte o donaciones.
 
 Cualquier aporte, por pequeño que sea, ayuda a mantener la librería actualizada y en funcionamiento. ¡Gracias por tu apoyo!
 
