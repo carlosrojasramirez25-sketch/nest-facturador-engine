@@ -54,6 +54,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
+        provider: config.get('PROVIDER'), // 'sunat' | 'ose'
         sunat: {
           ruc:          config.get('SUNAT_RUC'),
           solUser:      config.get('SUNAT_SOL_USER'),
@@ -67,6 +68,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           clientId:     config.get('GRE_CLIENT_ID'),
           clientSecret: config.get('GRE_CLIENT_SECRET'),
         },
+        ose: {
+          url:   config.get('OSE_URL'),
+          token: config.get('OSE_TOKEN'),
+        },
       }),
     }),
   ],
@@ -74,19 +79,75 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 export class AppModule {}
 ```
 
-## Variables de entorno (sunat + GRE)
+## Variables de entorno
 
 ```env
+# Credenciales SUNAT
 SUNAT_RUC=20123456789
 SUNAT_SOL_USER=MODDATOS
 SUNAT_SOL_PASS=moddatos
 SUNAT_CERT_PEM=BASE64_DEL_P12
 SUNAT_MODE=beta
 
+# GRE (Guía de Remisión Electrónica)
 GRE_AUTH_URL=https://gre-test.nubefact.com/v1
 GRE_API_URL=https://gre-test.nubefact.com/v1
 GRE_CLIENT_ID=tu_client_id
 GRE_CLIENT_SECRET=tu_client_secret
+
+# OSE (solo si provider=ose)
+PROVIDER=ose
+OSE_URL=https://api.tuose.com/v1/documents
+OSE_TOKEN=tu_token_aqui
+```
+
+## Proveedor: SUNAT directo vs OSE
+
+Puedes elegir enviar tus comprobantes **directamente a SUNAT** o a través de un **OSE (Operador de Servicios Electrónicos)** autorizado como Nubefact, EFACT, DigiFlow, Bizlinks, entre otros.
+
+```typescript
+// Envío directo a SUNAT (por defecto)
+SunatEngineModule.forRoot({
+  provider: 'sunat',
+  sunat: { ruc: '...', solUser: '...', solPass: '...', certPem: '...' },
+})
+
+// Envío a través de un OSE
+SunatEngineModule.forRoot({
+  provider: 'ose',
+  sunat: { ruc: '...', certPem: '...' }, // solo se usa para firmar el XML
+  ose: {
+    url:   'https://api.tuose.com/v1/documents',
+    token: 'TU_TOKEN_OSE',               // Bearer token
+    // o en lugar de token:
+    // username: 'usuario',
+    // password: 'clave',
+  },
+})
+```
+
+> El `OseClient` es genérico y compatible con cualquier OSE que acepte `{ fileName, contentFile }` (ZIP en base64) vía POST con autenticación Bearer o Basic.
+
+## Certificado digital
+
+El motor acepta el certificado en tres formatos:
+
+```typescript
+// Formato 1: ruta al archivo .p12 o .pem en disco
+const credentials: CompanyCredentials = {
+  certPem: '/ruta/al/certificado.p12',
+};
+
+// Formato 2: ruta a cert PEM + ruta a clave privada PEM por separado
+const credentials: CompanyCredentials = {
+  certPem: '/ruta/al/cert.pem',
+  certKey: '/ruta/al/key.pem',
+};
+
+// Formato 3: contenido directo en base64 (.p12) o texto PEM
+const credentials: CompanyCredentials = {
+  certPem: 'MIIKJAIBAzCCCd4GCSqGSI...', // .p12 en base64
+};
 ```
 
 ## Uso
@@ -111,7 +172,7 @@ export class InvoicesService {
       fechaEmision:  '2026-07-20T00:00:00-05:00',
       tipoMoneda:    'PEN',
       company: {
-        ruc:        '20123456789',
+        ruc:         '20123456789',
         razonSocial: 'MI EMPRESA S.A.C.',
         address: { direccion: 'Av. Principal 123, Lima' },
       },
@@ -161,8 +222,6 @@ return this.engine.sendInvoice(payload, {
 });
 ```
 
-```
-
 ## Documentos soportados
 
 | Tipo | Método | Descripción |
@@ -194,28 +253,6 @@ export class InvoicesService {
 }
 ```
 
-## Certificado digital
-
-El motor acepta el certificado en tres formatos:
-
-```typescript
-// Formato 1: ruta al archivo .p12 o .pem en disco
-const credentials: CompanyCredentials = {
-  certPem: '/ruta/al/certificado.p12',
-};
-
-// Formato 2: ruta a cert PEM + ruta a clave privada PEM por separado
-const credentials: CompanyCredentials = {
-  certPem: '/ruta/al/cert.pem',
-  certKey: '/ruta/al/key.pem',
-};
-
-// Formato 3: contenido directo en base64 (.p12) o texto PEM
-const credentials: CompanyCredentials = {
-  certPem: 'MIIKJAIBAzCCCd4GCSqGSI...', // .p12 en base64
-};
-```
-
 ## Respuesta del motor
 
 ```typescript
@@ -242,59 +279,6 @@ interface EngineResponse {
 |------|----------------------|-----|
 | `beta` | e-beta.sunat.gob.pe | gre-test.nubefact.com |
 | `produccion` | e-factura.sunat.gob.pe | api-cpe.sunat.gob.pe |
-
-## Proveedor: SUNAT directo vs OSE
-
-Puedes elegir enviar tus comprobantes **directamente a SUNAT** o a través de un **OSE (Operador de Servicios Electrónicos)** autorizado como Nubefact, EFACT, DigiFlow, Bizlinks, entre otros.
-
-```typescript
-// Envío directo a SUNAT (por defecto)
-SunatEngineModule.forRoot({
-  provider: 'sunat',
-  sunat: { ruc: '...', solUser: '...', solPass: '...', certPem: '...' },
-})
-
-// Envío a través de un OSE
-SunatEngineModule.forRoot({
-  provider: 'ose',
-  sunat: { ruc: '...', certPem: '...' }, // solo se usa para firmar el XML
-  ose: {
-    url:   'https://api.tuose.com/v1/documents',
-    token: 'TU_TOKEN_OSE',               // Bearer token
-    // o en lugar de token:
-    // username: 'usuario',
-    // password: 'clave',
-  },
-})
-```
-
-Con variables de entorno:
-
-```typescript
-SunatEngineModule.forRootAsync({
-  useFactory: (config: ConfigService) => ({
-    provider: config.get('PROVIDER'), // 'sunat' | 'ose'
-    sunat: {
-      ruc:     config.get('SUNAT_RUC'),
-      solUser: config.get('SUNAT_SOL_USER'),
-      solPass: config.get('SUNAT_SOL_PASS'),
-      certPem: config.get('SUNAT_CERT_PEM'),
-    },
-    ose: {
-      url:   config.get('OSE_URL'),
-      token: config.get('OSE_TOKEN'),
-    },
-  }),
-})
-```
-
-```env
-PROVIDER=ose
-OSE_URL=https://api.tuose.com/v1/documents
-OSE_TOKEN=tu_token_aqui
-```
-
-> El `OseClient` es genérico y compatible con cualquier OSE que acepte `{ fileName, contentFile }` (ZIP en base64) vía POST con autenticación Bearer o Basic.
 
 ## Soporte y actualizaciones
 
