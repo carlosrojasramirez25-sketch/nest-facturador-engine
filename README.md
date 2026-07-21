@@ -212,6 +212,29 @@ interface EngineResponse {
 | `beta` | e-beta.sunat.gob.pe | gre-test.nubefact.com |
 | `produccion` | e-factura.sunat.gob.pe | api-cpe.sunat.gob.pe |
 
+## Soporte y actualizaciones
+
+SUNAT actualiza continuamente sus esquemas, validaciones y normativas de facturación electrónica. Este paquete recibe mantenimiento activo para mantenerse alineado con cada cambio oficial, garantizando que tu integración siga funcionando sin interrupciones.
+
+Si este proyecto te ha sido útil y quieres apoyar su desarrollo continuo, puedes hacerlo de las siguientes formas:
+
+### Yape / WhatsApp
+
+**Número:** `+51 907 596 305`
+
+- [Escríbeme por WhatsApp](https://wa.me/51907596305) para consultas, soporte o coordinar una transferencia.
+
+### Transferencia bancaria (BCP — Soles)
+
+| Campo | Detalle |
+|-------|---------|
+| Banco | BCP |
+| Moneda | Soles (PEN) |
+| N° de cuenta | `19399752856058` |
+| CCI | `00219319975285605810` |
+
+Cualquier aporte, por pequeño que sea, ayuda a mantener la librería actualizada y en funcionamiento. ¡Gracias por tu apoyo!
+
 ## Licencia
 
 MIT
