@@ -2,7 +2,8 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import axios, { AxiosError } from 'axios';
 import * as crypto from 'crypto';
 import * as JSZip from 'jszip';
-import { SUNAT_ENGINE_OPTIONS, SunatEngineOptions } from '../sunat-engine.module';
+import { SUNAT_ENGINE_OPTIONS } from '../constants';
+import { SunatEngineOptions } from '../sunat-engine.module';
 
 /**
  * Cliente REST para la Guia de Remision Electronica (GRE) 2022.

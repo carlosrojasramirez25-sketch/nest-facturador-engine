@@ -1,4 +1,5 @@
 import { DynamicModule, Global, Module, ModuleMetadata } from '@nestjs/common';
+import { SUNAT_ENGINE_OPTIONS } from './constants';
 import { SunatEngineService } from './sunat-engine.service';
 import { XmlSignerService } from './signer/xml-signer.service';
 import { SunatSoapClient } from './soap/sunat-soap.client';
@@ -6,6 +7,8 @@ import { SunatGreClient } from './gre/sunat-gre.client';
 import { CdrParserService } from './cdr/cdr-parser.service';
 import { DocumentPdfService } from './pdf/document-pdf.service';
 import { OseClient } from './ose/ose.client';
+
+export { SUNAT_ENGINE_OPTIONS } from './constants';
 
 // ---------- Opciones del modulo ----------
 
@@ -47,8 +50,6 @@ export interface SunatEngineAsyncOptions extends Pick<ModuleMetadata, 'imports'>
   useFactory: (...args: any[]) => Promise<SunatEngineOptions> | SunatEngineOptions;
   inject?: any[];
 }
-
-export const SUNAT_ENGINE_OPTIONS = 'SUNAT_ENGINE_OPTIONS';
 
 // ---------- Providers compartidos ----------
 

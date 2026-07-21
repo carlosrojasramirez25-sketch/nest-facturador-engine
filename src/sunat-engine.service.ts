@@ -19,7 +19,8 @@ import { SunatSoapClient } from './soap/sunat-soap.client';
 import { SunatGreClient } from './gre/sunat-gre.client';
 import { OseClient } from './ose/ose.client';
 import { CdrParserService } from './cdr/cdr-parser.service';
-import { SUNAT_ENGINE_OPTIONS, SunatEngineOptions } from './sunat-engine.module';
+import { SUNAT_ENGINE_OPTIONS } from './constants';
+import { SunatEngineOptions } from './sunat-engine.module';
 
 @Injectable()
 export class SunatEngineService {
