@@ -240,6 +240,8 @@ export interface VoidedDetailSunat {
 export interface VoidedPayload {
   correlativo: string;
   fecGeneracion: string;
+  /** Fecha de envío a SUNAT (cbc:IssueDate). Si no se indica, se usa la fecha actual. */
+  fecComunicacion?: string;
   company: CompanySunat;
   details: VoidedDetailSunat[];
 }

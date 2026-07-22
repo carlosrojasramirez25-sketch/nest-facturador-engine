@@ -17,7 +17,7 @@ export function buildVoidedXml(data: VoidedPayload): string {
   root.ele('cbc:CustomizationID').txt('1.0').up();
   root.ele('cbc:ID').txt(`RA-${isoDate(data.fecGeneracion).replace(/-/g, '')}-${data.correlativo}`).up();
   root.ele('cbc:ReferenceDate').txt(isoDate(data.fecGeneracion)).up();
-  root.ele('cbc:IssueDate').txt(isoDate(data.fecGeneracion)).up();
+  root.ele('cbc:IssueDate').txt(isoDate(data.fecComunicacion ?? new Date().toISOString().slice(0, 10))).up();
 
   addSignatureBlock(root, data.company.ruc, data.company.razonSocial);
 
