@@ -235,6 +235,59 @@ return this.engine.sendInvoice(payload, {
 | Comunicación de Baja (RA) | `sendVoided()` | Baja de comprobantes — SOAP asíncrono |
 | Consulta de ticket | `getTicketStatus()` | Estado de procesos asíncronos |
 
+## Testing / Modo simulado
+
+SUNAT beta rechaza `sendSummary` (RC/RA) con el RUC genérico de prueba `20000000001` — ese RUC solo funciona de forma confiable para `sendBill` (facturas y boletas). Para probar el flujo completo sin depender del entorno beta, el módulo incluye un **cliente SOAP simulado** que devuelve respuestas válidas sin realizar ninguna llamada HTTP.
+
+### Opción 1 — `useFake: true` en el módulo (recomendado)
+
+```typescript
+// app.module.ts (para tests)
+SunatEngineModule.forRoot({
+  useFake: true, // ← activa FakeSunatSoapClient automáticamente
+  sunat: {
+    ruc:     '20000000001',
+    solUser: 'MODDATOS',
+    solPass: 'moddatos',
+    certPem: 'BASE64_DEL_P12',
+  },
+})
+
+// También con forRootAsync:
+SunatEngineModule.forRootAsync({
+  imports: [ConfigModule],
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    useFake: config.get('NODE_ENV') === 'test',
+    sunat: { ruc: config.get('SUNAT_RUC'), ... },
+  }),
+})
+```
+
+### Opción 2 — `overrideProvider` en NestJS Testing
+
+```typescript
+import { Test } from '@nestjs/testing';
+import { SunatSoapClient, FakeSunatSoapClient } from 'sunat-engine-nest';
+
+const moduleRef = await Test.createTestingModule({
+  imports: [SunatEngineModule.forRoot({ sunat: { ... } })],
+})
+  .overrideProvider(SunatSoapClient)
+  .useClass(FakeSunatSoapClient)
+  .compile();
+```
+
+### Comportamiento del cliente simulado
+
+| Método | Respuesta simulada |
+|--------|-------------------|
+| `sendBill` | CDR ZIP con `ResponseCode=0` (ACEPTADA) |
+| `sendSummary` | Ticket numérico incremental (`1000000001`, `1000000002`, ...) |
+| `getStatus` | CDR ZIP con `ResponseCode=0` (ACEPTADA) |
+
+No se realiza ninguna llamada HTTP — el XML se genera y firma normalmente, solo el envío a SUNAT es simulado.
+
 ## Generación de PDF
 
 ```typescript
