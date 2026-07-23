@@ -9,6 +9,7 @@ export { SunatEngineService } from './sunat-engine.service';
 export { XmlSignerService } from './signer/xml-signer.service';
 export { SunatSoapClient } from './soap/sunat-soap.client';
 export type { SoapSendResult, SunatEndpointType } from './soap/sunat-soap.client';
+export { FakeSunatSoapClient } from './soap/fake-sunat-soap.client';
 export { SunatGreClient } from './gre/sunat-gre.client';
 export { OseClient } from './ose/ose.client';
 export type { OseClientOptions } from './ose/ose.client';
