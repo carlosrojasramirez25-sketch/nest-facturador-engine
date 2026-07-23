@@ -3,6 +3,7 @@ import { SUNAT_ENGINE_OPTIONS } from './constants';
 import { SunatEngineService } from './sunat-engine.service';
 import { XmlSignerService } from './signer/xml-signer.service';
 import { SunatSoapClient } from './soap/sunat-soap.client';
+import { FakeSunatSoapClient } from './soap/fake-sunat-soap.client';
 import { SunatGreClient } from './gre/sunat-gre.client';
 import { CdrParserService } from './cdr/cdr-parser.service';
 import { DocumentPdfService } from './pdf/document-pdf.service';
@@ -44,6 +45,8 @@ export interface SunatEngineOptions {
   sunat?: SunatEngineCredentialsOptions;
   ose?: SunatEngineOseOptions;
   gre?: SunatEngineGreOptions;
+  /** Usa FakeSunatSoapClient en lugar del cliente SOAP real. Ideal para tests. */
+  useFake?: boolean;
 }
 
 export interface SunatEngineAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
@@ -53,10 +56,9 @@ export interface SunatEngineAsyncOptions extends Pick<ModuleMetadata, 'imports'>
 
 // ---------- Providers compartidos ----------
 
-const ENGINE_PROVIDERS = [
+const BASE_PROVIDERS = [
   SunatEngineService,
   XmlSignerService,
-  SunatSoapClient,
   SunatGreClient,
   OseClient,
   CdrParserService,
@@ -73,6 +75,15 @@ const ENGINE_EXPORTS = [
   DocumentPdfService,
 ];
 
+// Resuelve SunatSoapClient o FakeSunatSoapClient según options.useFake.
+// Al depender de SUNAT_ENGINE_OPTIONS funciona igual en forRoot y forRootAsync.
+const SOAP_CLIENT_PROVIDER = {
+  provide: SunatSoapClient,
+  useFactory: (options: SunatEngineOptions): SunatSoapClient =>
+    options.useFake ? new FakeSunatSoapClient() : new SunatSoapClient(),
+  inject: [SUNAT_ENGINE_OPTIONS],
+};
+
 @Global()
 @Module({})
 export class SunatEngineModule {
@@ -80,14 +91,10 @@ export class SunatEngineModule {
    * Registro sincrono.
    *
    * @example
-   * SunatEngineModule.forRoot({
-   *   gre: {
-   *     authUrl: process.env.GRE_AUTH_URL,
-   *     apiUrl:  process.env.GRE_API_URL,
-   *     clientId: process.env.GRE_CLIENT_ID,
-   *     clientSecret: process.env.GRE_CLIENT_SECRET,
-   *   }
-   * })
+   * SunatEngineModule.forRoot({ sunat: { ruc: '...', ... } })
+   *
+   * // Para tests — sin llamadas reales a SUNAT:
+   * SunatEngineModule.forRoot({ useFake: true, sunat: { ... } })
    */
   static forRoot(options: SunatEngineOptions = {}): DynamicModule {
     return {
@@ -95,7 +102,8 @@ export class SunatEngineModule {
       global: true,
       providers: [
         { provide: SUNAT_ENGINE_OPTIONS, useValue: options },
-        ...ENGINE_PROVIDERS,
+        SOAP_CLIENT_PROVIDER,
+        ...BASE_PROVIDERS,
       ],
       exports: ENGINE_EXPORTS,
     };
@@ -109,11 +117,8 @@ export class SunatEngineModule {
    *   imports: [ConfigModule],
    *   inject: [ConfigService],
    *   useFactory: (config: ConfigService) => ({
-   *     gre: {
-   *       authUrl: config.get('GRE_AUTH_URL'),
-   *       clientId: config.get('GRE_CLIENT_ID'),
-   *       clientSecret: config.get('GRE_CLIENT_SECRET'),
-   *     }
+   *     useFake: config.get('NODE_ENV') === 'test',
+   *     sunat: { ruc: config.get('RUC'), ... },
    *   }),
    * })
    */
@@ -128,7 +133,8 @@ export class SunatEngineModule {
           useFactory: asyncOptions.useFactory,
           inject: asyncOptions.inject ?? [],
         },
-        ...ENGINE_PROVIDERS,
+        SOAP_CLIENT_PROVIDER,
+        ...BASE_PROVIDERS,
       ],
       exports: ENGINE_EXPORTS,
     };
